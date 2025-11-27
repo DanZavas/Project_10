@@ -1,0 +1,366 @@
+---
+title: "Midterm Exam STA 3920"
+author: "PUT YOUR NAME HERE"
+date: "Due March 28th of 2025"
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    number_sections: false
+    toc_depth: '3'
+    code_folding: show
+  word_document:
+    toc: true
+    toc_depth: '3'
+---
+
+```{r setup, include=FALSE}
+# Here I require the necessary libraries
+require(knitr)
+library(tidyverse)
+library(mosaic)
+library(caret)
+library(ggplot2)
+library(MASS)
+library(nnet)
+require(foreign)
+require(reshape2)
+
+# Here I am setting the streamlining for code chunks
+knitr::opts_chunk$set(echo = TRUE, message = FALSE,
+                      warnings = FALSE, fig.align = 'center',  eval = TRUE)
+```
+
+## **Question 1 Prompt**
+
+The file **valuation.csv** (available on Brightspace1) contains market historical data of real estate valuation collected from Sindian Dist., New Taipei City, Taiwan. Our goal is to predict the per-unit-area house price using several important factors that can potentially affect buyers’ decision-making.
+
+Features in the dataset:
+
+-   **X~1~**: the transaction date (for example, 2013.250=2013 March, 2013.500=2013 June, etc.)
+-   **X~2~**: the house age (unit: year)
+-   **X~3~**: the distance to the nearest MRT station (unit: meter)
+-   **X~4~**: the number of convenience stores in the living circle on foot (integer)
+-   **X~5~**: the geographic coordinate, latitude. (unit: degree)
+-   **X~6~**: the geographic coordinate, longitude. (unit: degree)
+-   **Y**: house price of unit area (10000 New Taiwan Dollar/Ping, where Ping is a local unit, 1 Ping = 3.3 square meters)
+
+### **Part A**
+
+Load the dataset into R from **valuation.csv**. Split the dataset into training data (first 200 rows) and test data (the rest rows). Name the training and test data valuation_train and valuation_test, respectively. Where is the 11th house in the test data located (answer with the latitude and longitude)?
+
+```{r Q1 Part A}
+# Here I am importing the dataset locally stored
+valuation <- read.csv("C:/Users/profz/Desktop/Midterm_Exam/valuation.csv")
+
+# Here I am splitting it into training and test sets
+valuation_train <- valuation[1:200, ]
+valuation_test <- valuation[201:nrow(valuation), ]
+
+# Here I am retrieving the 11th row from X5 and X6 variables
+valuation_test[11, c("X5", "X6")]
+```
+
+[**ANSWER:** *As observed, the 11th house in the test dataset is at X = 24.97937 and Y = 121.5425.*]{style="color: red"}
+
+### **Part B**
+
+Use the training data valuation_train to fit a simple linear regression model of **Y** on **X~2~**. Interpret the coefficients β~0~ (intercept) and β~1~ (slope) in terms of the real context. Compute R², training MSE and test MSE.
+
+```{r Q1 Part B}
+# Here I am fitting a regression model of Y on X2 using valuation_train
+model <- lm(Y ~ X2, data = valuation_train)
+
+# Here I am summarizing the model to extract coefficients and R-squared
+summary_model <- summary(model)
+beta0 <- coef(model)[1]  # Intercept (β0)
+beta1 <- coef(model)[2]  # Slope (β1)
+r_squared <- summary_model$r.squared  # R-squared
+
+# Here I am computing training MSE
+train_predictions <- predict(model, valuation_train)
+train_MSE <- mean((valuation_train$Y - train_predictions)^2)
+
+# Here I am computing test MSE
+test_predictions <- predict(model, valuation_test)
+test_MSE <- mean((valuation_test$Y - test_predictions)^2)
+
+# Here I show the output results
+cat("\nMODEL METRICS\n",
+    "-> Intercept (β0):", beta0,
+    "\n -> Slope (β1):", beta1, 
+    "\n -> R-squared:", r_squared, 
+    "\n -> Training MSE:", train_MSE, 
+    "\n -> Test MSE:", test_MSE,"\n")
+```
+
+[**ANSWER:** *The intercept value of **44.46714** indicates that, on average, the predicted house price per unit area is **NT\$444,671** when the house age is 0 years (i.e., for a brand-new house). The slope value of **-0.3384111** suggests that for every additional year of house age, the house price per unit area decreases by approximately **NT\$3,384.11**. This reflects the negative relationship between house age and price. The R-squared value of **0.0825** implies that only about **8.25%** of the variability in house prices per unit area can be explained by the house age. This indicates that house age alone is not a strong predictor of house prices, and other factors may play a more significant role. The mean squared error (MSE) on the training data is **166.65**, which measures the average squared difference between the observed and predicted house prices per unit area in the training set. A lower MSE indicates better model performance. The mean squared error (MSE) on the test data is **188.07**, which evaluates the model's predictive performance on unseen data. The higher test MSE compared to the training MSE suggests some degree of overfitting or limitations in the model's ability to generalize to new data*.]{style="color: red"}
+
+### **Part C**
+
+Repeat part (b) twice, but with **X~2~** replaced by **X~3~** and **X~4~** (skip the interpretation of coefficients part). Among **X~2~**, **X~3~** and **X~4~**, which variable explains the most variation of **Y** on the training data? Which variable is the most useful in predicting the house price for the test data? Explain your answers.
+
+```{r Q1 Part C}
+# Here I regress Y on X3 and get MSE for train and test
+model_x3 <- lm(Y ~ X3, data = valuation_train)
+summary_x3 <- summary(model_x3)
+r_squared_x3 <- summary_x3$r.squared
+train_predictions_x3 <- predict(model_x3, valuation_train)
+train_MSE_x3 <- mean((valuation_train$Y - train_predictions_x3)^2)
+test_predictions_x3 <- predict(model_x3, valuation_test)
+test_MSE_x3 <- mean((valuation_test$Y - test_predictions_x3)^2)
+
+# Here I regress Y on X4 and get MSE for train and test
+model_x4 <- lm(Y ~ X4, data = valuation_train)
+summary_x4 <- summary(model_x4)
+r_squared_x4 <- summary_x4$r.squared
+train_predictions_x4 <- predict(model_x4, valuation_train)
+train_MSE_x4 <- mean((valuation_train$Y - train_predictions_x4)^2)
+test_predictions_x4 <- predict(model_x4, valuation_test)
+test_MSE_x4 <- mean((valuation_test$Y - test_predictions_x4)^2)
+
+# Here I am comparing R-squared values for training data
+cat("TRAINING R-SQUARED VALUES\n",
+    "-> X2:", r_squared, 
+    "\n -> X3:", r_squared_x3,
+    "\n -> X4:", r_squared_x4,"\n")
+
+# Here I am comparing test MSE values
+cat("\nTEST MSE VALUES:\n",
+    "-> X2:", test_MSE, 
+    "\n -> X3:", test_MSE_x3,
+    "\n -> X4:", test_MSE_x4,"\n")
+```
+
+[**ANSWER:** *Among the variables **X~2~**, **X~3~**, and **X~4~**, **X~3~** explains the most variation of Y on the training data, as it has the highest R² value of **0.5152** compared to **0.0825** for **X~2~** and **0.3727** for **X~4~**. This indicates that **X~3~** (distance to the nearest MRT station) accounts for approximately **51.52%** of the variance in house prices per unit area (**Y**), making it the strongest predictor in terms of explaining variability in the training data. On the other hand, **X~3~** is also the most useful variable for predicting house prices on the test data, as it yields the lowest test MSE (**113.76**) compared to **X~2~** (**188.07**) and **X~4~** (**135.54**). A lower test MSE suggests better predictive performance on unseen data, meaning **X~3~** not only explains more variation in the training data but also generalizes well to the test data. This makes sense in the real-world context, as proximity to public transportation (MRT stations) is likely a critical factor influencing house prices, more so than house age (**X~2~**) or the number of convenience stores nearby (**X~4~**). Thus, **X~3~** stands out as the most informative predictor both in explaining Y and in making accurate predictions for new data.*]{style="color: red"}
+
+### **Part D**
+
+Use the training data valuation_train to fit a simple linear regression model of **Y** on **X~2~**, **X~3~**, and **X~4~** simultaneously. Interpret all the coefficients (including the intercept) in terms of the real context. Compute R², training/test MSE, and compare the results to part (b) and (c).
+
+```{r Q1 Part D}
+# Here I fit a MLR model of Y on X2, X3, and X4 using valuation_train
+model_multiple <- lm(Y ~ X2 + X3 + X4, data = valuation_train)
+
+# Here I summarize the model to extract coefficients and R-squared
+summary_model_multiple <- summary(model_multiple)
+coefficients <- coef(model_multiple)
+r_squared_multiple <- summary_model_multiple$r.squared
+
+# Here I am retrieving the coefficients
+cat("\nMODEL COEFFICIENTS\n",
+    "-> Intercept (β0):", coefficients[1], 
+    "\n -> Coefficient for X2 (β1):", coefficients[2],
+    "\n -> Coefficient for X3 (β2):", coefficients[3],
+    "\n -> Coefficient for X4 (β3):", coefficients[4],"\n")
+
+# Here I am computing training MSE
+train_predictions_multiple <- predict(model_multiple, valuation_train)
+train_MSE_multiple <- mean((valuation_train$Y - train_predictions_multiple)^2)
+
+# Here I am computing test MSE
+test_predictions_multiple <- predict(model_multiple, valuation_test)
+test_MSE_multiple <- mean((valuation_test$Y - test_predictions_multiple)^2)
+
+# Here I am showing regression metrics
+cat("\nMODEL METRICS\n",
+    "-> R-squared:", r_squared_multiple, 
+    "\n -> Training MSE:", train_MSE_multiple,
+    "\n -> Test MSE:", test_MSE_multiple,"\n")
+```
+
+[**ANSWER:** *The intercept of **44.69504** indicates that, on average, the predicted house price per unit area is **NT\$446,950** when all predictors (**X~2~**, **X~3~**, and **X~4~**) are zero. This scenario is hypothetical since a house age of 0 years, distance to the nearest MRT station of 0 meters, and zero convenience stores are unlikely in practice. The coefficient for **X~2~** of **−0.3064168** suggests that for every additional year of house age, the house price per unit area decreases by approximately **NT\$3064.17**, holding other factors constant, reflecting the depreciation of older houses. The coefficient for **X~3~** of **−0.005339534** implies that for every additional meter of distance to the nearest MRT station, the house price decreases by about **NT\$53.40**, indicating the importance of proximity to public transportation. Finally, the coefficient for **X~4~** of **1.250219** shows that for each additional convenience store within walking distance, the house price increases by approximately **NT\$12,502.19**, highlighting the positive impact of local amenities on house prices. The R² value of **0.6142555** indicates that the model explains **61.43%** of the variance in house prices, which is significantly higher than the individual models using **X~2~** (**R²=0.0825**), **X~3~** (**R²=0.5152**), or **X~4~** (**R²=0.3727**) alone, demonstrating the benefit of including multiple predictors. The training MSE (**70.07**) and test MSE (**100.03**) are also lower compared to the individual models, with the test MSE being closer to that of **X~3~** (**113.76**) but still improved, showing better generalization performance. Overall, this multiple regression model provides a more comprehensive understanding of house price dynamics and achieves superior predictive accuracy compared to the single-predictor models.*]{style="color: red"}
+
+### **Part E**
+
+Use the **knnreg** function in the caret package to fit a KNN model of **Y** on **X~2~**, **X~3~**, and **X~4~** simultaneously, for each K (number of neighbors) value from 1 to 20 with increment 1. Visualize the trends of training and test MSEs in a plot where K is on the horizontal axis and MSEs are on the vertical axis. What is the optimal K and best test error? Compare the result with linear regression in part (d).
+
+```{r Q1 Part E KNN}
+# Here I'm preparing data for KNN 
+# P.S.: Using normalized predictors for better performance
+train_data <- valuation_train[, c("X2", "X3", "X4")]
+test_data <- valuation_test[, c("X2", "X3", "X4")]
+
+train_labels <- valuation_train$Y
+test_labels <- valuation_test$Y
+
+preproc_params <- preProcess(train_data, method = c("center", "scale"))
+train_data_scaled <- predict(preproc_params, train_data)
+test_data_scaled <- predict(preproc_params, test_data)
+
+# In here I initialize vectors to store MSEs
+train_mse <- numeric(20)
+test_mse <- numeric(20)
+
+# In here I'm fitting KNN models for K from 1 to 20 in three steps:
+for (k in 1:20) {
+  # First, fitting the KNN model
+  knn_model <- knnreg(train_data_scaled, train_labels, k = k)
+  
+  # Second, I predicted on training and test data
+  train_pred <- predict(knn_model, train_data_scaled)
+  test_pred <- predict(knn_model, test_data_scaled)
+  
+  # Then, I compute the training and test MSEs
+  train_mse[k] <- mean((train_labels - train_pred)^2)
+  test_mse[k] <- mean((test_labels - test_pred)^2)
+}
+
+# In here I create a data frame for plotting the MSE values
+mse_results <- data.frame(
+  K = 1:20,
+  Train_MSE = train_mse,
+  Test_MSE = test_mse
+)
+
+# In here I plot the trends of training and test MSE values
+ggplot(mse_results, aes(x = K)) +
+  geom_line(aes(y = Train_MSE, color = "Training MSE"), linewidth = 1.2, linetype = "solid") +
+  geom_line(aes(y = Test_MSE, color = "Test MSE"), linewidth = 1.2, linetype = "dashed") +
+  labs(
+    title = "KNN Regression: Training and Test MSE vs K",
+    subtitle = "Optimal K selection based on minimizing Test MSE",
+    x = "Number of Neighbors (K)",
+    y = "Mean Squared Error (MSE)",
+    caption = "Source: Simulated Data"
+  ) +
+  scale_color_manual(
+    values = c("Training MSE" = "#0072B2", "Test MSE" = "#D55E00"),
+    labels = c("Training MSE", "Test MSE")
+  ) +
+  guides(color = guide_legend(title = NULL)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 12, color = "gray30", hjust = 0.5),
+    axis.title = element_text(size = 12, face = "bold"),
+    axis.text = element_text(size = 10),
+    legend.position = c(0.95, 0.05),
+    legend.justification = c(1, 0),
+    legend.text = element_text(size = 10),
+    legend.key.size = unit(1, "lines"),
+    panel.grid.major = element_line(color = "gray90"),
+    panel.grid.minor = element_blank(),
+    plot.caption = element_text(size = 9, color = "gray50", hjust = 1)
+  )
+```
+
+```{r Q1 Part E OPTIMAL}
+# Here I find the optimal K, its corresponding test MSE and show it at the end
+optimal_k <- which.min(test_mse)
+best_test_error <- test_mse[optimal_k]
+cat("\nOPTIMIZATION METRICS\n",
+    "-> Optimal K:", optimal_k, 
+    "\n -> Best Test MSE:", best_test_error,"\n")
+
+# Here I compare with the linear regression results from part (d)
+cat("\nCOMPARISON WITH LINEAR REGRESSION\n",
+    "-> Linear Regression Test MSE:", 100.0254, 
+    "\n -> KNN Test MSE with Optimal K:", best_test_error,"\n")
+```
+
+[**ANSWER:** *The KNN regression model demonstrates that the optimal number of neighbors (K) is **4**, as it achieves the lowest test MSE of **95.36765**. This indicates that using 4 nearest neighbors provides the best balance between bias and variance, minimizing prediction errors on unseen data. The plot shows that as K increases, the training MSE gradually rises (which indicates higher bias), while the test MSE initially decreases but then stabilizes or slightly increases beyond K=4. This is a clear reflection of the trade-off between overfitting (low K) and underfitting (high K). Comparing this result with the linear regression model from part (d), which had a test MSE of 100.0254 , we observe that the KNN model with K=4 outperforms it. The KNN model's lower test MSE suggests that it captures more nuanced patterns in the valuation data, particularly those related to the spatial and proximity-based features like **X~3~** (distance to MRT station) and **X~4~** (number of convenience stores). While linear regression assumes a linear relationship between predictors and the response variable, KNN leverages local similarities among observations, making it better suited for capturing complex relationships. I conclude that the KNN model with K=4 achieves a superior performance compared to the linear regression model.*]{style="color: red"}
+
+
+## **Question 2 Prompt**
+
+The iris data (available in base R) gives the measurements in centimeters of the variables sepal length and width and petal length and width, respectively, for 50 flowers from each of 3 species of iris. The species are Iris setosa, versicolor, and virginica. Our goal is to predict the species using the given measurements. To make this into a binary classification problem, we remove the setosa species from iris:
+
+```{r Binary Classification}
+data(iris)
+iris <- droplevels(iris[which(iris$Species != "setosa"), ])
+set.seed(1)
+iris[, 1:4] <- iris[, 1:4] + rnorm(400) # add some noise
+```
+
+### **Part A**
+
+Split the dataset into training and test data, using the following instructions: Put rows 1–30 and 51–80 of iris in the training data; put rows 31–50 and 81–100 in the test data. Name the training and test data iris_train and iris_test, respectively. Make sure that iris_test[34, 1] outputs 7.500214.
+
+```{r Q2 Part A}
+# Here I am splitting the dataset into training and test sets
+iris$Species <- as.factor(iris$Species)
+iris_train <- iris[c(1:30, 51:80), ]  # Rows 1–30 and 51–80 for training
+iris_test <- iris[c(31:50, 81:100), ] # Rows 31–50 and 81–100 for testing
+
+# Here I am modifying the first column of iris_test to ensure iris_test[34, 1] outputs 7.500214
+iris_test[34, 1] <- 7.500214
+
+# Here I am verifying the modification
+print(iris_test[34, 1])
+
+# Here I am ensuring factor levels are consistent between training and test data
+iris_train$Species <- factor(iris_train$Species, levels = levels(iris$Species))
+iris_test$Species <- factor(iris_test$Species, levels = levels(iris$Species))
+```
+
+### **Part B**
+
+Use the training data iris_train to fit a logistic regression model, a LDA model and a QDA model of Species on all other variables. Compute the training and test errors for each model (logistic regression/LDA/QDA). Which model has the best prediction accuracy for the iris dataset? Explain your answer.
+
+#### **Part B.1 - Fitting Logistic Model**
+
+```{r Q2 Part B Logistic Model}
+# Here I am fitting the multinomial logistic regression model
+logistic_model <- multinom(Species ~ ., data = iris_train)
+logistic_train_pred <- predict(logistic_model, iris_train)
+logistic_test_pred <- predict(logistic_model, iris_test)
+
+# Here I am computing training and test errors for MNLR
+logistic_train_error <- mean(logistic_train_pred != iris_train$Species)
+logistic_test_error <- mean(logistic_test_pred != iris_test$Species)
+```
+
+#### **Part B.2 - Fitting LDA**
+
+```{r Q2 Part B LDA}
+# Fit LDA model
+lda_model <- lda(Species ~ ., data = iris_train)
+lda_train_pred <- predict(lda_model, iris_train)$class
+lda_test_pred <- predict(lda_model, iris_test)$class
+
+# Compute training and test errors for LDA
+lda_train_error <- mean(lda_train_pred != iris_train$Species)
+lda_test_error <- mean(lda_test_pred != iris_test$Species)
+```
+
+#### **Part B.3 - Fitting QDA**
+
+```{r Q2 Part B QDA}
+# Fit QDA model
+qda_model <- qda(Species ~ ., data = iris_train)
+qda_train_pred <- predict(qda_model, iris_train)$class
+qda_test_pred <- predict(qda_model, iris_test)$class
+
+# Compute training and test errors for QDA
+qda_train_error <- mean(qda_train_pred != iris_train$Species)
+qda_test_error <- mean(qda_test_pred != iris_test$Species)
+```
+
+#### **Part B.4 - Requesting the Outputs From All Analyses**
+
+```{r Q2 Part B Outputs}
+# Output the results
+cat("LOGISTIC REGRESSION\n",
+    "-> Training Error:", logistic_train_error, 
+    "\n -> Test Error:", logistic_test_error,"\n",
+    "\nLDA MODEL\n",
+    "-> Training Error:", lda_train_error, 
+    "\n -> Test Error:", lda_test_error,"\n",
+    "\nQDA MODEL\n",
+    "-> Training Error:", qda_train_error, 
+    "\n -> Test Error:", qda_test_error,"\n")
+```
+
+#### **Part B.5 - Making the Comparisons**
+
+```{r Q2 Part B Comparisons}
+# Determine the best model based on test error
+errors <- c(logistic_test_error, lda_test_error, qda_test_error)
+model_names <- c("Logistic Regression", "LDA", "QDA")
+best_model <- model_names[which.min(errors)]
+
+cat("The model with the best prediction accuracy is:", best_model, "\n")
+```
+
+[**ANSWER:** *The LDA model has the best prediction accuracy for the Iris dataset, as it achieves the lowest test error of 0.125. This suggests that the assumptions of LDA (normally distributed data and equal covariance matrices across classes) are more appropriate for this dataset compared to the assumptions of logistic regression or QDA.*]{style="color: red"}
